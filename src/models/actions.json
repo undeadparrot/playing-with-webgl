@@ -1,0 +1,62 @@
+[
+  {
+    "name": "walk",
+    "framecount": 10.0,
+    "secondsPerFrame": 0.1,
+    "channelsByBoneName": {
+      "LegRight": [
+        {
+          "property": "rotation",
+          "startFrame": 0.0,
+          "component": 1,
+          "toValue": -0.362533301115036,
+          "stopFrame": 4.0,
+          "fromValue": 0.5532210469245911
+        },
+        {
+          "property": "rotation",
+          "startFrame": 5.0,
+          "component": 1,
+          "toValue": 0.4236726760864258,
+          "stopFrame": 9.0,
+          "fromValue": -0.362533301115036
+        }
+      ],
+      "LegLeft": [
+        {
+          "property": "rotation",
+          "startFrame": 0.0,
+          "component": 1,
+          "toValue": 0.26770102977752686,
+          "stopFrame": 4.0,
+          "fromValue": -0.4344785213470459
+        },
+        {
+          "property": "rotation",
+          "startFrame": 5.0,
+          "component": 1,
+          "toValue": -0.39486509561538696,
+          "stopFrame": 9.0,
+          "fromValue": 0.26770102977752686
+        }
+      ]
+    }
+  },
+  {
+    "name": "idle",
+    "framecount": 1.0,
+    "secondsPerFrame": 20,
+    "channelsByBoneName": {
+      "LegRight": [
+        {
+          "property": "rotation",
+          "startFrame": 0.0,
+          "component": 2,
+          "toValue": 1.0,
+          "stopFrame": 1.0,
+          "fromValue": 90.0
+        }
+      ]
+    }
+  }
+]

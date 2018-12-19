@@ -1,0 +1,32 @@
+[
+  {
+    "rotation": [0.0, 0.0, 0.0],
+    "name": "Root",
+    "translation": [0.0, 0.0, 0.0],
+    "parent": null
+  },
+  {
+    "rotation": [0.0, 0.0, 0.0],
+    "name": "Bone.001",
+    "translation": [0.0, 0.0, 2.3063161373138428],
+    "parent": "Root"
+  },
+  {
+    "rotation": [0.0, 0.0, 0.0],
+    "name": "LegLeft",
+    "translation": [0.0, 1.0, 2.3063161373138428],
+    "parent": "Bone.001"
+  },
+  {
+    "rotation": [0.0, 0.0, 0.0],
+    "name": "Bone.002",
+    "translation": [0.0, 0.0, 2.3063161373138428],
+    "parent": "Root"
+  },
+  {
+    "rotation": [0.0, 0.0, 0.0],
+    "name": "LegRight",
+    "translation": [0.0, -1.0, 2.3063161373138428],
+    "parent": "Bone.002"
+  }
+]
