@@ -1,113 +1,132 @@
 import * as glm from "gl-matrix";
-import fragmentShader from "./shaders/fragmentShader.glsl";
-import vertexShader from "./shaders/vertexShader.glsl";
 import VERTICES from "./models/vertices.json";
 import BONES from "./models/bones-bindpose.json";
-import BONES_POSE from "./models/bones-pose.json";
 import ACTIONS from "./models/actions.json";
-import { experiment } from "./lib/experiment";
-import { AnimationManager } from "./lib/animation-manager";
+import { RiggedMesh } from "./lib/rigged-mesh";
+import { CanvasOverlay } from "./lib/canvas-overlay";
+import { InputManager } from "./lib/input";
+import { Camera } from "./lib/camera";
+import { Instance } from "./lib/instance";
 
-const width = 320;
-const height = 240;
 const canvas = document.getElementById("gl");
-canvas.width = width;
-canvas.height = height;
-const gl = canvas.getContext("webgl") as WebGLRenderingContext;
-gl.clearColor(0.1, 0.3, 0.2, 1.0);
-gl.clear(gl.COLOR_BUFFER_BIT);
-gl.enable(gl.BLEND);
-gl.enable(gl.CULL_FACE);
-gl.enable(gl.DEPTH_TEST);
+const gl = canvas.getContext("webgl2", {
+  premultipliedAlpha: false,
+  alpha: false
+}) as WebGLRenderingContext;
+const inputManager = new InputManager();
+inputManager.register(window);
+const camera = new Camera();
+camera.pos[2] = 3;
+camera.pos[1] = 2;
 
-const vShader = gl.createShader(gl.VERTEX_SHADER);
-gl.shaderSource(vShader, vertexShader);
-gl.compileShader(vShader);
-if (!gl.getShaderParameter(vShader, gl.COMPILE_STATUS)) {
-  throw new Error("Failed to compile shader: " + gl.getShaderInfoLog(vShader));
+const model = new RiggedMesh(gl, VERTICES, BONES, ACTIONS);
+const overlay = new CanvasOverlay(gl);
+const instances = [new Instance(model)];
+
+let animationIndex = 0;
+
+function resize(width, height) {
+  canvas.width = width;
+  canvas.height = height;
+  overlay.reinitializeTexture(width, height);
+  gl.viewport(0, 0, canvas.width, canvas.height);
 }
-
-const fShader = gl.createShader(gl.FRAGMENT_SHADER);
-gl.shaderSource(fShader, fragmentShader);
-gl.compileShader(fShader);
-if (!gl.getShaderParameter(fShader, gl.COMPILE_STATUS)) {
-  throw new Error("Failed to compile shader: " + gl.getShaderInfoLog(fShader));
-}
-
-const buffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-const program = gl.createProgram();
-gl.attachShader(program, vShader);
-gl.attachShader(program, fShader);
-gl.linkProgram(program);
-gl.useProgram(program);
-
-const camera = {
-  pitch: 0.0,
-  yaw: 0.0,
-  x: 0,
-  y: 0,
-  z: 5
-};
-window.addEventListener(
-  "mousemove",
-  (ev: MouseEvent): any => {
-    camera.pitch += ev.movementY * 0.01;
-    camera.yaw += ev.movementX * 0.01;
-  }
+resize(800, 400);
+window.addEventListener("resize", () =>
+  resize(window.innerWidth, window.innerHeight)
 );
 
-window.addEventListener("keypress", (ev: KeyboardEvent) => {
-  switch (ev.key) {
-    case "w":
-      camera.z += 0.5;
-      break;
-    case "s":
-      camera.z -= 0.5;
-      break;
-    case "a":
-      camera.x -= 0.5;
-      break;
-    case "d":
-      camera.x += 0.5;
-      break;
-  }
-});
-
-const posAttrib = gl.getAttribLocation(program, "pos");
-// const normalAttrib = gl.getAttribLocation(program, "normal");
-gl.enableVertexAttribArray(posAttrib);
-// gl.enableVertexAttribArray(normalAttrib);
-gl.vertexAttribPointer(posAttrib, 3, gl.FLOAT, false, 12, 0);
-// gl.vertexAttribPointer(normalAttrib, 3, gl.FLOAT, false, 24, 12);
-
-const modelView = gl.getUniformLocation(program, "modelView");
-const projection = gl.getUniformLocation(program, "projection");
-const animationManager = new AnimationManager(ACTIONS);
-animationManager.startAction("idle");
-window.addEventListener("mouseup", () => animationManager.startAction("walk"));
-
-function render(t) {
-  const data = experiment(BONES, BONES_POSE, VERTICES, animationManager, t).map(
-    _ => _ * 1
+function update(deltaTime: number) {
+  inputManager.update();
+  model.animationManager.work(deltaTime);
+  camera.mouseLook(
+    deltaTime,
+    inputManager.mouseDelta.x,
+    inputManager.mouseDelta.y
   );
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
-
-  // glm.mat4.rotateX(matrix, matrix, t);
-  const matrix = glm.mat4.create();
-  glm.mat4.frustum(matrix, -1, 1, -1, 1, 1.0, 30);
-  gl.uniformMatrix4fv(projection, false, matrix);
-
-  const matrix2 = glm.mat4.create();
-  glm.mat4.translate(matrix2, matrix2, [-camera.x, -camera.y, -camera.z]);
-  glm.mat4.rotateX(matrix2, matrix2, -camera.pitch);
-  glm.mat4.rotateY(matrix2, matrix2, -camera.yaw);
-  gl.uniformMatrix4fv(modelView, false, matrix2);
-
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.drawArrays(gl.POINTS, 0, data.length / 3);
-  gl.drawArrays(gl.TRIANGLES, 0, data.length / 3);
-  requestAnimationFrame(() => render(t + 0.01));
+  if (inputManager.mousePressed.right) {
+    canvas.requestPointerLock();
+  }
+  const move = [0, 0, 0];
+  if (inputManager.keysDown.w) {
+    move[2] += -0.5;
+  }
+  if (inputManager.keysDown.s) {
+    move[2] += 0.5;
+  }
+  if (inputManager.keysDown.d) {
+    move[0] += 0.5;
+  }
+  if (inputManager.keysDown.a) {
+    move[0] += -0.5;
+  }
+  if (inputManager.keysDown.l) {
+    // instances[0].rot[1] += -0.05;
+    glm.quat.rotateY(instances[0].quat, instances[0].quat, 0.01);
+  }
+  if (inputManager.keysPressed.q) {
+    animationIndex =
+      (animationIndex + 1) % model.animationManager.actions.length;
+  }
+  if (inputManager.keysPressed.e) {
+    const action = model.animationManager.actions[animationIndex];
+    model.animationManager.startAction(action.name);
+  }
+  camera.move(deltaTime, move[0], move[1], move[2]);
 }
-render(0);
+
+function render(previousTime: number) {
+  const time = new Date().valueOf();
+  const deltaTime = (time - previousTime) / 100;
+  update(deltaTime);
+
+  const viewMatrix = camera.getViewMatrix();
+  const projectionMatrix = camera.getProjectionMatrix();
+
+  gl.clearColor(0.1, 0.3, 0.2, 1.0);
+
+  // draw 3d objects
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.BLEND);
+  gl.enable(gl.CULL_FACE);
+  gl.enable(gl.DEPTH_TEST);
+  instances.map(_ => _.draw(projectionMatrix, viewMatrix));
+
+  // draw overlay in 2d
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.disable(gl.CULL_FACE);
+  gl.disable(gl.DEPTH_TEST);
+
+  overlay.ctx.clearRect(0, 0, overlay.canvas.width, overlay.canvas.height);
+  overlay.addText3D(`origin`, 0, 0, 0, viewMatrix, projectionMatrix);
+  overlay.addText3D(`y`, 0, 3, 0, viewMatrix, projectionMatrix);
+  overlay.addText2D(
+    `${camera.pos[0].toFixed(2)}, ${camera.pos[2].toFixed(2)}`,
+    9,
+    9
+  );
+  overlay.addText2D(`${camera.yaw.toFixed(2)}, ${camera.pitch.toFixed(2)}`, 9);
+  const y = 20;
+  const animationManager = (instances[0].renderable as RiggedMesh)
+    .animationManager;
+  const action = model.animationManager.actions[animationIndex];
+  overlay.addText2D(`${action.name}: ${action.time}`, 9, y + 9);
+
+  const poseBones = (instances[0].renderable as RiggedMesh).getPose().bones;
+  BONES.map(_ => {
+    overlay.addText3D(
+      _.name,
+      _.translation[0],
+      _.translation[1],
+      _.translation[2],
+      viewMatrix,
+      projectionMatrix
+    );
+  });
+
+  overlay.draw();
+
+  requestAnimationFrame(() => render(time));
+}
+render(new Date().valueOf());

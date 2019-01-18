@@ -1,5 +1,6 @@
 export type TBone = {
   rotation: [number, number, number];
+  quat: [number, number, number, number];
   name: string;
   translation: [number, number, number];
   parent: string | TBone;
@@ -11,10 +12,9 @@ export type TVertices = {
   y: number;
   x: number;
   z: number;
-  weights: [
-    {
-      bone: string;
-      weight: number;
-    }[]
-  ];
+  n: [number, number, number];
+  weights: {
+    bone: string | TBone;
+    weight: number;
+  }[];
 };

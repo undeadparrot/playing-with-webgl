@@ -1,3 +1,4 @@
+import * as glm from "gl-matrix";
 import { TBone } from "./model";
 
 function flatten<T>(input: T[][]): T[] {
@@ -52,7 +53,9 @@ export function getChannelValue(channel: TAnimActionChannel, frame: number) {
   const offset = frame - channel.startFrame;
   const percentage = offset / frameRange;
   const valueRange = channel.toValue - channel.fromValue;
-  return channel.fromValue + valueRange * percentage;
+  const quat = glm.quat.create();
+  glm.quat.slerp(quat, channel.fromValue, channel.toValue, percentage);
+  return quat;
 }
 
 export function applyBoneUpdates(
@@ -60,7 +63,7 @@ export function applyBoneUpdates(
   updates: { channel: TAnimActionChannel; value: number }[]
 ) {
   updates.map(({ channel, value }) => {
-    bone[channel.property][channel.component] = value;
+    bone[channel.property] = value;
   });
 }
 
@@ -94,7 +97,6 @@ export class AnimationManager {
     action.time += deltaTime;
     const frame = action.time / action.secondsPerFrame;
     if (frame >= action.framecount) {
-      console.log("Stopping action");
       action.isStarted = false;
     }
   }
